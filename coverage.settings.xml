@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Settings for Microsoft.Testing.Extensions.CodeCoverage: measure the production assembly only. -->
+<Configuration>
+  <CodeCoverage>
+    <ModulePaths>
+      <Include>
+        <ModulePath>.*InventoryAggregation\.Api\.dll$</ModulePath>
+      </Include>
+    </ModulePaths>
+    <SkipAutoProperties>True</SkipAutoProperties>
+  </CodeCoverage>
+</Configuration>

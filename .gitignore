@@ -1,0 +1,22 @@
+## Build output
+bin/
+obj/
+[Dd]ebug/
+[Rr]elease/
+TestResults/
+BenchmarkDotNet.Artifacts/
+coverage/
+
+## IDE
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+
+## Secrets - never commit these
+secrets.json
+appsettings.*.local.json
+appsettings.Local.json
+.env
+.env.*
