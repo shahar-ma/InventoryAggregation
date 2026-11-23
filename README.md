@@ -101,8 +101,13 @@ The test project contains BenchmarkDotNet benchmarks (`Benchmarks/`):
 Two always-on tests execute the benchmark methods once and assert correct results, so benchmark code cannot rot. The real
 measurement run is opt-in because it is slow and only meaningful in Release:
 
+#### Bash
 ```bash
-INVENTORY_RUN_BENCHMARKS=true dotnet test -c Release --filter-method "*RunBenchmarkSuite"      # PowerShell: $env:INVENTORY_RUN_BENCHMARKS="true"
+INVENTORY_RUN_BENCHMARKS=true dotnet test -c Release --filter-method "*RunBenchmarkSuite"
+```
+#### PowerShell
+```PowerShell
+$env:INVENTORY_RUN_BENCHMARKS="true"; dotnet test -c Release --filter-method "*RunBenchmarkSuite"
 ```
 
 ## Architecture note
