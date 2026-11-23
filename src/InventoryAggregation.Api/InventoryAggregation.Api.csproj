@@ -6,6 +6,10 @@
     <UserSecretsId>inventory-aggregation-api-3f6c1c7e-5b1e-4f0e-9a52-0f1d6a3b7c21</UserSecretsId>
   </PropertyGroup>
 
+	<ItemGroup>
+		<InternalsVisibleTo Include="InventoryAggregation.Tests" />
+	</ItemGroup>	
+	
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.Http.Resilience" />
   </ItemGroup>

@@ -5,6 +5,7 @@ using InventoryAggregation.Api.Reporting;
 using InventoryAggregation.Tests.Support;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Time.Testing;
+using System.Diagnostics.CodeAnalysis;
 
 namespace InventoryAggregation.Tests.Reporting;
 
@@ -115,8 +116,7 @@ public class ReportCacheTests
 
         using var cts = new CancellationTokenSource();
         await cts.CancelAsync();
-        await Assert.ThrowsAnyAsync<OperationCanceledException>(
-            () => cache.GetOrCreateAsync(static _ => Task.FromResult(Report(2)), cts.Token));
+        await cache.AssertOperationCanceled(Report(2), cts.Token);
 
         release.SetResult();
         await leader;
@@ -147,7 +147,22 @@ public class ReportCacheTests
 
         cache.Dispose();
 
+        await cache.AssertDisposed(Report(1));
+    }
+}
+
+[ExcludeFromCodeCoverage]
+internal static class ReportCacheExtensions
+{
+    internal static async Task AssertDisposed(this ReportCache cache, InventoryReport report)
+    {
         await Assert.ThrowsAsync<ObjectDisposedException>(
-            () => cache.GetOrCreateAsync(static _ => Task.FromResult(Report(1)), Ct.Token));
+                    () => cache.GetOrCreateAsync(_ => Task.FromResult(report), Ct.Token));
+    }
+
+    internal static async Task AssertOperationCanceled(this ReportCache cache, InventoryReport report, CancellationToken token)
+    {
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(
+                    () => cache.GetOrCreateAsync(_ => Task.FromResult(report), token));
     }
 }

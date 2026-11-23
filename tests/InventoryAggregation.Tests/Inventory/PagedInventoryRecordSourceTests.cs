@@ -2,15 +2,40 @@ using InventoryAggregation.Api.Configuration;
 using InventoryAggregation.Api.Domain;
 using InventoryAggregation.Api.Inventory;
 using InventoryAggregation.Tests.Support;
-using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.CodeAnalysis;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Testing;
 using Microsoft.Extensions.Options;
 
 namespace InventoryAggregation.Tests.Inventory;
 
 public class PagedInventoryRecordSourceTests
 {
+    private static readonly Dictionary<string, InventoryPage> InconsistentFirstPages =
+    new()
+    {
+        ["wrong-page"] = TestData.DatasetPage(60, 25, 2),
+        ["negative-records"] = TestData.Page(1, 25, 1, -1),
+        ["negative-pages"] = TestData.Page(1, 25, -1, 5),
+        ["zero-page-size"] = TestData.Page(1, 0, 1, 5),
+        ["oversized-page"] = TestData.Page(1, 30, 1, 5),
+        ["inconsistent-pages"] = TestData.Page(1, 25, 3, 10, TestData.Records(10)),
+        ["short-page"] = TestData.Page(1, 25, 1, 10, TestData.Records(9))
+    };
+
+    private static readonly Dictionary<string, InventoryPage> InvalidFirstPages =
+    new()
+    {
+        ["page-size-changed"] = TestData.DatasetPage(60, 20, 2),
+        ["total-records-changed"] = TestData.Page(2, 25, 3, 61, TestData.Records(25)),
+        ["total-pages-changed"] = TestData.Page(2, 25, 4, 60, TestData.Records(25)),
+    };
+
     private static PagedInventoryRecordSource Create(IInventoryPageClient client, Action<InventoryApiOptions>? configure = null)
     {
+        var fakeCollector = FakeLogCollector.Create(new FakeLogCollectorOptions { FilteredLevels = new HashSet<LogLevel>([LogLevel.Information]) });
+        var fakeLogger = new FakeLogger<PagedInventoryRecordSource>(fakeCollector);
+
         var options = new InventoryApiOptions
         {
             BaseUrl = "https://inventory.test/",
@@ -21,7 +46,7 @@ public class PagedInventoryRecordSourceTests
             MaxPageAttempts = 3,
         };
         configure?.Invoke(options);
-        return new PagedInventoryRecordSource(client, Options.Create(options), NullLogger<PagedInventoryRecordSource>.Instance);
+        return new PagedInventoryRecordSource(client, Options.Create(options), fakeLogger);
     }
 
     private static FakePageClient Dataset(int total, int pageSizeServerUses = 0) =>
@@ -38,7 +63,7 @@ public class PagedInventoryRecordSourceTests
 
         Assert.Equal(10, result.Records.Count);
         Assert.Equal(0, result.DuplicatesDiscarded);
-        Assert.Equal(new[] { (1, 25) }, client.Calls);
+        Assert.Equal([(1, 25)], client.Calls);
     }
 
     [Theory]
@@ -103,24 +128,16 @@ public class PagedInventoryRecordSourceTests
     [InlineData("short-page", "expected 10 records but received 9")]
     public async Task GetAllAsync_RejectsAnInconsistentFirstPage(string scenario, string expectedFragment)
     {
-        InventoryPage Build() => scenario switch
+        if (InconsistentFirstPages.TryGetValue(scenario, out var build))
         {
-            "wrong-page" => TestData.DatasetPage(60, 25, 2),
-            "negative-records" => TestData.Page(1, 25, 1, -1),
-            "negative-pages" => TestData.Page(1, 25, -1, 5),
-            "zero-page-size" => TestData.Page(1, 0, 1, 5),
-            "oversized-page" => TestData.Page(1, 30, 1, 5),
-            "inconsistent-pages" => TestData.Page(1, 25, 3, 10, TestData.Records(10)),
-            "short-page" => TestData.Page(1, 25, 1, 10, TestData.Records(9)),
-            _ => throw new ArgumentOutOfRangeException(nameof(scenario), scenario, "Unknown scenario."),
-        };
-        var client = new FakePageClient((_, _, _) => Build());
+            var client = new FakePageClient((_, _, _) => build);
 
-        var ex = await Assert.ThrowsAsync<InventoryDataException>(
-            () => Create(client, o => o.MaxPageAttempts = 1).GetAllAsync(Ct.Token));
+            var ex = await Assert.ThrowsAsync<InventoryDataException>(
+                () => Create(client, o => o.MaxPageAttempts = 1).GetAllAsync(Ct.Token));
 
-        Assert.Equal(InventoryDataFailure.InvalidResponse, ex.Failure);
-        Assert.Contains(expectedFragment, ex.Message);
+            Assert.Equal(InventoryDataFailure.InvalidResponse, ex.Failure);
+            Assert.Contains(expectedFragment, ex.Message);
+        }
     }
 
     // ---- integrity: later pages ----
@@ -131,20 +148,16 @@ public class PagedInventoryRecordSourceTests
     [InlineData("total-pages-changed", "totals changed")]
     public async Task GetAllAsync_RejectsPagesThatContradictTheFirstPage(string scenario, string expectedFragment)
     {
-        InventoryPage Altered() => scenario switch
+        if (InvalidFirstPages.TryGetValue(scenario, out var altered))
         {
-            "page-size-changed" => TestData.DatasetPage(60, 20, 2),
-            "total-records-changed" => TestData.Page(2, 25, 3, 61, TestData.Records(25)),
-            "total-pages-changed" => TestData.Page(2, 25, 4, 60, TestData.Records(25)),
-            _ => throw new ArgumentOutOfRangeException(nameof(scenario), scenario, "Unknown scenario."),
-        };
-        var client = new FakePageClient((page, _, _) => page == 2 ? Altered() : TestData.DatasetPage(60, 25, page));
+            var client = new FakePageClient((page, _, _) => page == 2 ? altered : TestData.DatasetPage(60, 25, page));
 
-        var ex = await Assert.ThrowsAsync<InventoryDataException>(
-            () => Create(client, o => o.MaxPageAttempts = 1).GetAllAsync(Ct.Token));
+            var ex = await Assert.ThrowsAsync<InventoryDataException>(
+                () => Create(client, o => o.MaxPageAttempts = 1).GetAllAsync(Ct.Token));
 
-        Assert.Equal(InventoryDataFailure.InvalidResponse, ex.Failure);
-        Assert.Contains(expectedFragment, ex.Message);
+            Assert.Equal(InventoryDataFailure.InvalidResponse, ex.Failure);
+            Assert.Contains(expectedFragment, ex.Message);
+        }
     }
 
     [Fact]
@@ -154,7 +167,7 @@ public class PagedInventoryRecordSourceTests
         {
             var good = TestData.DatasetPage(60, size, page);
             return page == 2 && attempt == 1
-                ? TestData.Page(2, good.PageSize, good.TotalPages, good.TotalRecords, good.Records.Take(good.Records.Count - 1).ToArray())
+                ? TestData.Page(2, good.PageSize, good.TotalPages, good.TotalRecords, [.. good.Records.Take(good.Records.Count - 1)])
                 : good;
         });
 
@@ -171,7 +184,7 @@ public class PagedInventoryRecordSourceTests
         {
             var good = TestData.DatasetPage(60, size, page);
             return page == 2
-                ? TestData.Page(2, good.PageSize, good.TotalPages, good.TotalRecords, good.Records.Take(1).ToArray())
+                ? TestData.Page(2, good.PageSize, good.TotalPages, good.TotalRecords, [.. good.Records.Take(1)])
                 : good;
         });
 
@@ -205,7 +218,7 @@ public class PagedInventoryRecordSourceTests
 
         var result = await Create(client, o => o.PageSize = 2).GetAllAsync(Ct.Token);
 
-        Assert.Equal(new RawInventoryRecord?[] { r1, r2, r3 }, result.Records);
+        Assert.Equal([r1, r2, r3], result.Records);
         Assert.Equal(1, result.DuplicatesDiscarded);
     }
 

@@ -16,6 +16,12 @@ public sealed class InventoryPageClient(HttpClient httpClient, ILogger<Inventory
 {
     private static readonly JsonSerializerOptions SerializerOptions = new(JsonSerializerDefaults.Web);
 
+    /// <summary>Retrieves and parses one page of inventory records from the upstream API.</summary>
+    /// <param name="page">The one-based page number to retrieve.</param>
+    /// <param name="pageSize">The requested number of records per page.</param>
+    /// <param name="cancellationToken">Cancels the HTTP request.</param>
+    /// <returns>The page and its pagination metadata.</returns>
+    /// <exception cref="InventoryDataException">The request fails or the response cannot be read as a valid page.</exception>
     public async Task<InventoryPage> GetPageAsync(int page, int pageSize, CancellationToken cancellationToken)
     {
         // Relative (no leading slash) so a base address that has a path prefix keeps it.

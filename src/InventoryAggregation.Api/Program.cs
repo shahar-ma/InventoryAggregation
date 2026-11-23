@@ -14,10 +14,12 @@ app.UseStatusCodePages();
 
 app.Use(async (context, next) =>
 {
-    context.Response.Headers["X-Content-Type-Options"] = "nosniff";
+    context.Response.Headers.XContentTypeOptions = "nosniff";
     await next(context);
 });
 
 app.MapInventoryEndpoints();
 
+#pragma warning disable S6966
 app.Run();
+#pragma warning restore S6966

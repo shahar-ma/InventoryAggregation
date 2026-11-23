@@ -42,15 +42,15 @@ public class InventoryReportServiceTests
     [Fact]
     public async Task GetReportAsync_RetrievesSanitizesAndAggregates_WithAccurateStatistics()
     {
-        var (service, cache, _) = Create(new FakeSource(Mixed));
+        var source = new FakeSource(Mixed);
+        var (service, cache, _) = Create(source);
         using var cacheLifetime = cache;
 
         var report = await service.GetReportAsync(Ct.Token);
 
         Assert.Equal(TestData.T0, report.GeneratedAt);
-        Assert.Equal(new[] { "Electronics", "Furniture" }, report.Categories.Select(c => c.Category));
-        Assert.Equal(new[] { 20m, 100m }, report.Categories.Select(c => c.TotalInventoryValue));
-
+        Assert.Equal(["Electronics", "Furniture"], report.Categories.Select(c => c.Category));
+        Assert.Equal([20m, 100m], report.Categories.Select(c => c.TotalInventoryValue));
         var s = report.Statistics;
         Assert.Equal(5, s.RecordsRetrieved);
         Assert.Equal(1, s.DuplicatesDiscarded);
@@ -58,6 +58,7 @@ public class InventoryReportServiceTests
         Assert.Equal(1, s.ZeroQuantityRecordsExcluded);
         Assert.Equal(2, s.AvailableRecords);
         Assert.Equal(2, s.Warnings.Count);
+        Assert.NotEqual(0, source.Calls);
     }
 
     [Fact]

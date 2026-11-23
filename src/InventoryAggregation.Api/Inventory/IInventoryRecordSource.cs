@@ -8,5 +8,9 @@ public sealed record RetrievedInventory(IReadOnlyList<RawInventoryRecord?> Recor
 /// <summary>Produces the whole dataset or throws <see cref="InventoryDataException"/>; never a silently partial one.</summary>
 public interface IInventoryRecordSource
 {
+    /// <summary>Retrieves and de-duplicates the complete upstream dataset.</summary>
+    /// <param name="cancellationToken">Cancels retrieval of the dataset.</param>
+    /// <returns>The retrieved raw records and the number of identical duplicates discarded.</returns>
+    /// <exception cref="InventoryDataException">The dataset could not be retrieved completely and consistently.</exception>
     Task<RetrievedInventory> GetAllAsync(CancellationToken cancellationToken);
 }

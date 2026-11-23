@@ -1,4 +1,5 @@
 using InventoryAggregation.Api.Configuration;
+using System.Diagnostics.CodeAnalysis;
 
 namespace InventoryAggregation.Tests.Configuration;
 
@@ -7,6 +8,38 @@ public class InventoryApiOptionsValidatorTests
     private readonly InventoryApiOptionsValidator _sut = new();
 
     private static InventoryApiOptions Valid() => new() { BaseUrl = "https://inventory.example.com/", ApiKey = "secret" };
+
+    private static readonly Dictionary<string, Action<InventoryApiOptions>> ScenarioMutations =
+        new()
+        {
+            ["api-key-control-char"] = o => o.ApiKey = "abc\ndef",
+            ["api-key-empty"] = o => o.ApiKey = "  ",
+            ["attempt-timeout-zero"] = o => o.Resilience.AttemptTimeout = TimeSpan.Zero,
+            ["base-url-empty"] = o => o.BaseUrl = "",
+            ["base-url-ftp"] = o => o.BaseUrl = "ftp://localhost/",
+            ["base-url-http-remote"] = o => o.BaseUrl = "http://inventory.example.com/",
+            ["base-url-relative"] = o => o.BaseUrl = "/api",
+            ["break-too-short"] = o => o.Resilience.BreakerBreakDuration = TimeSpan.FromMilliseconds(100),
+            ["cache-negative"] = o => o.CacheDuration = TimeSpan.FromSeconds(-1),
+            ["concurrency-high"] = o => o.MaxConcurrentRequests = 17,
+            ["concurrency-low"] = o => o.MaxConcurrentRequests = 0,
+            ["header-empty"] = o => o.ApiKeyHeaderName = "",
+            ["header-invalid"] = o => o.ApiKeyHeaderName = "X Api Key",
+            ["max-pages-high"] = o => o.MaxPages = 10_001,
+            ["max-pages-low"] = o => o.MaxPages = 0,
+            ["page-attempts-high"] = o => o.MaxPageAttempts = 11,
+            ["page-attempts-low"] = o => o.MaxPageAttempts = 0,
+            ["page-size-high"] = o => o.PageSize = 26,
+            ["page-size-low"] = o => o.PageSize = 0,
+            ["ratio-high"] = o => o.Resilience.BreakerFailureRatio = 1.5,
+            ["ratio-zero"] = o => o.Resilience.BreakerFailureRatio = 0,
+            ["retries-high"] = o => o.Resilience.MaxRetryAttempts = 11,
+            ["retries-low"] = o => o.Resilience.MaxRetryAttempts = 0,
+            ["retry-delay-zero"] = o => o.Resilience.RetryDelay = TimeSpan.Zero,
+            ["sampling-too-short"] = o => o.Resilience.BreakerSamplingDuration = o.Resilience.AttemptTimeout,
+            ["throughput-low"] = o => o.Resilience.BreakerMinimumThroughput = 1,
+            ["total-timeout-not-greater"] = o => o.Resilience.TotalTimeout = o.Resilience.AttemptTimeout,
+        };
 
     [Fact]
     public void Validate_AcceptsTheDefaultsPlusABaseUrlAndKey() =>
@@ -68,7 +101,15 @@ public class InventoryApiOptionsValidatorTests
         var result = _sut.Validate(null, options);
 
         Assert.True(result.Failed);
-        Assert.Contains(result.Failures!, failure => failure.Contains(expectedFragment));
+        Assert.Contains(result.Failures, failure => failure.Contains(expectedFragment));
+    }
+
+    [Fact]
+    [ExcludeFromCodeCoverage]
+    public void Validate_RejectsUnsafeOrUnusableSettingsThrows()
+    {
+        var options = Valid();
+        Assert.Throws<ArgumentOutOfRangeException>(() => Apply("Invalid", options));
     }
 
     [Fact]
@@ -81,38 +122,15 @@ public class InventoryApiOptionsValidatorTests
         Assert.Equal(2, result.Failures!.Count());
     }
 
-    private static void Apply(string scenario, InventoryApiOptions o)
+    private static void Apply(string scenario, InventoryApiOptions options)
     {
-        switch (scenario)
+        if (ScenarioMutations.TryGetValue(scenario, out var mutate))
         {
-            case "base-url-empty": o.BaseUrl = ""; break;
-            case "base-url-relative": o.BaseUrl = "/api"; break;
-            case "base-url-http-remote": o.BaseUrl = "http://inventory.example.com/"; break;
-            case "base-url-ftp": o.BaseUrl = "ftp://localhost/"; break;
-            case "api-key-empty": o.ApiKey = "  "; break;
-            case "api-key-control-char": o.ApiKey = "abc\ndef"; break;
-            case "header-empty": o.ApiKeyHeaderName = ""; break;
-            case "header-invalid": o.ApiKeyHeaderName = "X Api Key"; break;
-            case "page-size-low": o.PageSize = 0; break;
-            case "page-size-high": o.PageSize = 26; break;
-            case "concurrency-low": o.MaxConcurrentRequests = 0; break;
-            case "concurrency-high": o.MaxConcurrentRequests = 17; break;
-            case "max-pages-low": o.MaxPages = 0; break;
-            case "max-pages-high": o.MaxPages = 10_001; break;
-            case "page-attempts-low": o.MaxPageAttempts = 0; break;
-            case "page-attempts-high": o.MaxPageAttempts = 11; break;
-            case "cache-negative": o.CacheDuration = TimeSpan.FromSeconds(-1); break;
-            case "retries-low": o.Resilience.MaxRetryAttempts = 0; break;
-            case "retries-high": o.Resilience.MaxRetryAttempts = 11; break;
-            case "retry-delay-zero": o.Resilience.RetryDelay = TimeSpan.Zero; break;
-            case "attempt-timeout-zero": o.Resilience.AttemptTimeout = TimeSpan.Zero; break;
-            case "total-timeout-not-greater": o.Resilience.TotalTimeout = o.Resilience.AttemptTimeout; break;
-            case "ratio-zero": o.Resilience.BreakerFailureRatio = 0; break;
-            case "ratio-high": o.Resilience.BreakerFailureRatio = 1.5; break;
-            case "throughput-low": o.Resilience.BreakerMinimumThroughput = 1; break;
-            case "sampling-too-short": o.Resilience.BreakerSamplingDuration = o.Resilience.AttemptTimeout; break;
-            case "break-too-short": o.Resilience.BreakerBreakDuration = TimeSpan.FromMilliseconds(100); break;
-            default: throw new ArgumentOutOfRangeException(nameof(scenario), scenario, "Unknown scenario.");
+            mutate(options);
+            return;
         }
+
+        throw new ArgumentOutOfRangeException(nameof(scenario), scenario, "Unknown scenario.");
     }
+
 }

@@ -16,6 +16,9 @@ public sealed class InventoryReportService(
 {
     private const int MaxWarnings = 50;
 
+    /// <summary>Gets the cached inventory report or builds a fresh report from the upstream dataset.</summary>
+    /// <param name="cancellationToken">Cancels report retrieval and construction.</param>
+    /// <returns>The complete inventory report.</returns>
     public Task<InventoryReport> GetReportAsync(CancellationToken cancellationToken) =>
         cache.GetOrCreateAsync(BuildReportAsync, cancellationToken);
 
@@ -31,7 +34,7 @@ public sealed class InventoryReportService(
             InvalidRecordsExcluded: sanitized.Problems.Count,
             ZeroQuantityRecordsExcluded: aggregation.ZeroQuantityExcluded,
             AvailableRecords: aggregation.Categories.Sum(static c => c.AvailableRecordCount),
-            Warnings: sanitized.Problems.Take(MaxWarnings).ToList());
+            Warnings: [.. sanitized.Problems.Take(MaxWarnings)]);
 
         return new InventoryReport(clock.GetUtcNow(), aggregation.Categories, statistics);
     }

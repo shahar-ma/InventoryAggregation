@@ -50,11 +50,7 @@ public class InventoryPageClientTests
     [InlineData("""{"page":1,"pageSize":25,"totalPages":1,"totalRecords":0}""")]
     public async Task GetPageAsync_RejectsAnIncompleteEnvelope(string body)
     {
-        var (client, _) = Create((_, _, _) => Task.FromResult(StubHttpHandler.Json(body)));
-
-        var ex = await Assert.ThrowsAsync<InventoryDataException>(() => Get(client, Ct.Token));
-
-        Assert.Equal(InventoryDataFailure.InvalidResponse, ex.Failure);
+        await GetPageAsync_Rejects(body);
     }
 
     [Theory]
@@ -64,11 +60,7 @@ public class InventoryPageClientTests
     [InlineData("""{"records":[],"page":"one","pageSize":25,"totalPages":1,"totalRecords":0}""")]
     public async Task GetPageAsync_RejectsAMalformedBody(string body)
     {
-        var (client, _) = Create((_, _, _) => Task.FromResult(StubHttpHandler.Json(body)));
-
-        var ex = await Assert.ThrowsAsync<InventoryDataException>(() => Get(client, Ct.Token));
-
-        Assert.Equal(InventoryDataFailure.InvalidResponse, ex.Failure);
+        await GetPageAsync_Rejects(body);
     }
 
     [Fact]
@@ -151,5 +143,14 @@ public class InventoryPageClientTests
         var (client, _) = Create(StubHttpHandler.Script(Steps.Ok()));
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => Get(client, cts.Token));
+    }
+
+    private static async Task GetPageAsync_Rejects(string body)
+    {
+        var (client, _) = Create((_, _, _) => Task.FromResult(StubHttpHandler.Json(body)));
+
+        var ex = await Assert.ThrowsAsync<InventoryDataException>(() => Get(client, Ct.Token));
+
+        Assert.Equal(InventoryDataFailure.InvalidResponse, ex.Failure);
     }
 }

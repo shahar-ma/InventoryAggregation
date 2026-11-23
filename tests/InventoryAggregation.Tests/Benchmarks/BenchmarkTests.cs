@@ -5,6 +5,7 @@ using BenchmarkDotNet.Jobs;
 using BenchmarkDotNet.Loggers;
 using BenchmarkDotNet.Running;
 using BenchmarkDotNet.Toolchains.InProcess.NoEmit;
+using System.Diagnostics.CodeAnalysis;
 
 namespace InventoryAggregation.Tests.Benchmarks;
 
@@ -42,6 +43,7 @@ public class BenchmarkTests
     /// (numbers from a Debug build are meaningless). Results are printed to the console and written to BenchmarkDotNet.Artifacts/.
     /// </summary>
     [Fact(Skip = "Opt-in: set INVENTORY_RUN_BENCHMARKS=true and run a Release build (see README).", SkipUnless = nameof(RunBenchmarks))]
+    [ExcludeFromCodeCoverage]
     public void RunBenchmarkSuite()
     {
         IConfig config = ManualConfig.CreateEmpty()

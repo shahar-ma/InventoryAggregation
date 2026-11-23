@@ -1,6 +1,7 @@
 using InventoryAggregation.Api.Contracts;
 using InventoryAggregation.Api.Inventory;
 using InventoryAggregation.Api.Reporting;
+using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace InventoryAggregation.Api.Endpoints;
 
@@ -8,6 +9,9 @@ public static class InventoryEndpoints
 {
     public const string CategoriesRoute = "/api/inventory/categories";
 
+    /// <summary>Maps the inventory category report endpoint.</summary>
+    /// <param name="routes">The endpoint route builder to add the route to.</param>
+    /// <returns>The route builder, for further endpoint configuration.</returns>
     public static IEndpointRouteBuilder MapInventoryEndpoints(this IEndpointRouteBuilder routes)
     {
         routes.MapGet(CategoriesRoute, GetCategoriesAsync)
@@ -35,7 +39,7 @@ public static class InventoryEndpoints
     }
 
     // Deliberately generic: upstream details (hostnames, status codes, ids) stay in the logs, not in the response.
-    private static IResult ToProblem(InventoryDataException ex)
+    private static ProblemHttpResult ToProblem(InventoryDataException ex)
     {
         var (status, title) = ex.Failure switch
         {

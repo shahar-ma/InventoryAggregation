@@ -18,7 +18,7 @@ internal static class TestData
         new(id, name ?? $"Item {id}", category, price, quantity, updated ?? T0);
 
     public static RawInventoryRecord[] Records(int count) =>
-        Enumerable.Range(1, count).Select(i => Raw(i)).ToArray();
+        [.. Enumerable.Range(1, count).Select(i => Raw(i))];
 
     public static InventoryRecord Record(
         long id,

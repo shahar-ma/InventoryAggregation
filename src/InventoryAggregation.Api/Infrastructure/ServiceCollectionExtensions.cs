@@ -15,7 +15,10 @@ public static class ServiceCollectionExtensions
 {
     private const int MaxResponseBytes = 1_048_576;
 
-    /// <summary>Registers everything the service needs. The composition root is the only place that knows all the pieces.</summary>
+    /// <summary>Registers the services required for inventory aggregation.</summary>
+    /// <param name="services">The service collection to add registrations to.</param>
+    /// <param name="configuration">The application configuration used for Inventory API settings.</param>
+    /// <returns>The service collection, for further registration.</returns>
     public static IServiceCollection AddInventoryAggregation(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddInventoryApiClient(configuration);
@@ -34,6 +37,9 @@ public static class ServiceCollectionExtensions
     /// and wrapped in the standard resilience pipeline (rate limiter, total timeout, retry, circuit breaker, attempt timeout).
     /// Resilience settings are read once, here; everything else is read through <see cref="IOptions{TOptions}"/>.
     /// </summary>
+    /// <param name="services">The service collection to add registrations to.</param>
+    /// <param name="configuration">The application configuration containing Inventory API settings.</param>
+    /// <returns>The typed HTTP client builder.</returns>
     public static IHttpClientBuilder AddInventoryApiClient(this IServiceCollection services, IConfiguration configuration)
     {
         var section = configuration.GetSection(InventoryApiOptions.SectionName);
@@ -56,9 +62,10 @@ public static class ServiceCollectionExtensions
     private static void ConfigureClient(IServiceProvider services, HttpClient client)
     {
         var options = services.GetRequiredService<IOptions<InventoryApiOptions>>().Value;
-
         // Trailing slash so relative request URIs append to (rather than replace) any path in the base address.
+#pragma warning disable S1075 // The slash only normalizes the configured URI.
         client.BaseAddress = new Uri(options.BaseUrl.TrimEnd('/') + "/", UriKind.Absolute);
+#pragma warning restore S1075
         client.DefaultRequestHeaders.Add(options.ApiKeyHeaderName, options.ApiKey);
         client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 

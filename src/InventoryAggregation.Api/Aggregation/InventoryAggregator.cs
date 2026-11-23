@@ -8,6 +8,9 @@ namespace InventoryAggregation.Api.Aggregation;
 /// </summary>
 public sealed class InventoryAggregator : IInventoryAggregator
 {
+    /// <summary>Groups available records by category and calculates each category's totals and latest record.</summary>
+    /// <param name="records">The validated inventory records to aggregate.</param>
+    /// <returns>The category aggregates and the number of zero-quantity records excluded.</returns>
     public AggregationResult Aggregate(IEnumerable<InventoryRecord> records)
     {
         ArgumentNullException.ThrowIfNull(records);

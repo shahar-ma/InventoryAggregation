@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Diagnostics.CodeAnalysis;
 using System.Net;
 using System.Text;
 
@@ -35,6 +36,7 @@ internal sealed class StubHttpHandler(Func<HttpRequestMessage, int, Cancellation
 }
 
 /// <summary>Building blocks for <see cref="StubHttpHandler.Script"/>.</summary>
+[ExcludeFromCodeCoverage]
 internal static class Steps
 {
     public static Func<CancellationToken, Task<HttpResponseMessage>> Respond(Func<HttpResponseMessage> make) =>

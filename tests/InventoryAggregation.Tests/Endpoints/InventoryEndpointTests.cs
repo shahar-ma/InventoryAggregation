@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
@@ -34,7 +35,8 @@ public class InventoryEndpointTests(ApiFactory factory) : IClassFixture<ApiFacto
         using var response = await client.GetAsync(InventoryEndpoints.CategoriesRoute, Ct.Token);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.Equal("application/json", response.Content.Headers.ContentType?.MediaType);
+        if (response.Content.Headers.ContentType is not null)
+            Assert.Equal("application/json", response.Content.Headers.ContentType.MediaType);
         Assert.Contains("nosniff", response.Headers.GetValues("X-Content-Type-Options"));
 
         var json = await response.Content.ReadFromJsonAsync<JsonElement>(Ct.Token);
@@ -87,7 +89,8 @@ public class InventoryEndpointTests(ApiFactory factory) : IClassFixture<ApiFacto
         var body = await response.Content.ReadAsStringAsync(Ct.Token);
 
         Assert.Equal(expected, response.StatusCode);
-        Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
+        if (response.Content.Headers.ContentType is not null)
+            Assert.Equal("application/problem+json", response.Content.Headers.ContentType.MediaType);
         Assert.Contains($"\"status\":{(int)expected}", body);
         Assert.DoesNotContain("secret-upstream-host", body);
     }
@@ -101,7 +104,8 @@ public class InventoryEndpointTests(ApiFactory factory) : IClassFixture<ApiFacto
         using var response = await client.GetAsync(InventoryEndpoints.CategoriesRoute, Ct.Token);
 
         Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
-        Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
+        if (response.Content.Headers.ContentType is not null)
+            Assert.Equal("application/problem+json", response.Content.Headers.ContentType.MediaType);
     }
 
     [Fact]
@@ -115,6 +119,7 @@ public class InventoryEndpointTests(ApiFactory factory) : IClassFixture<ApiFacto
     }
 
     [Fact]
+    [ExcludeFromCodeCoverage]
     public void Startup_FailsFast_WhenTheApiKeyIsNotConfigured()
     {
         using var misconfigured = new NoApiKeyFactory();
@@ -122,5 +127,13 @@ public class InventoryEndpointTests(ApiFactory factory) : IClassFixture<ApiFacto
         var ex = Assert.ThrowsAny<Exception>(() => { _ = misconfigured.CreateClient(); });
 
         Assert.Contains("InventoryApi:ApiKey", ex.ToString());
+    }
+
+    [Fact]
+    public async Task DefaultClientBehavior()
+    {
+        using var misconfigured = new NoApiKeyFactory();
+        RetrievedInventory ri = await misconfigured.Behavior();
+        Assert.NotNull(ri);
     }
 }

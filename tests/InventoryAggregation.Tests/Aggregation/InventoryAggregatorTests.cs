@@ -1,6 +1,7 @@
 using InventoryAggregation.Api.Aggregation;
 using InventoryAggregation.Api.Domain;
 using InventoryAggregation.Tests.Support;
+using System.Diagnostics.CodeAnalysis;
 
 namespace InventoryAggregation.Tests.Aggregation;
 
@@ -20,7 +21,7 @@ public class InventoryAggregatorTests
         Assert.Equal(1799.88m, category.TotalInventoryValue);
         Assert.Equal(1, category.AvailableRecordCount);
         Assert.Equal(printer, category.MostRecentlyUpdated);
-        Assert.Equal(new[] { printer }, category.Items);
+        Assert.Equal([printer], category.Items);
         Assert.Equal(0, result.ZeroQuantityExcluded);
     }
 
@@ -37,7 +38,7 @@ public class InventoryAggregatorTests
         Assert.Equal(20m, category.TotalInventoryValue);
         Assert.Equal(1, category.AvailableRecordCount);
         Assert.Equal(kept, category.MostRecentlyUpdated);  // the newer zero-quantity record must not win
-        Assert.Equal(new[] { kept }, category.Items);
+        Assert.Equal([kept], category.Items);
         Assert.Equal(2, result.ZeroQuantityExcluded);
     }
 
@@ -50,11 +51,11 @@ public class InventoryAggregatorTests
 
         var result = _sut.Aggregate([furniture, electronicsLower, electronics]);
 
-        Assert.Equal(new[] { "Electronics", "Furniture" }, result.Categories.Select(c => c.Category));
+        Assert.Equal(["Electronics", "Furniture"], result.Categories.Select(c => c.Category));
         var merged = result.Categories[0];
         Assert.Equal(2, merged.AvailableRecordCount);
         Assert.Equal(30m, merged.TotalInventoryValue);
-        Assert.Equal(new[] { 2L, 3L }, merged.Items.Select(i => i.Id));  // items ordered by id
+        Assert.Equal([2L, 3L], merged.Items.Select(i => i.Id));  // items ordered by id
     }
 
     [Fact]
@@ -89,6 +90,7 @@ public class InventoryAggregatorTests
     }
 
     [Fact]
+    [ExcludeFromCodeCoverage]
     public void Aggregate_RejectsNullInput() =>
         Assert.Throws<ArgumentNullException>(() => _sut.Aggregate(null!));
 

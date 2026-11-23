@@ -8,6 +8,10 @@ namespace InventoryAggregation.Api.Configuration;
 /// </summary>
 public sealed class InventoryApiOptionsValidator : IValidateOptions<InventoryApiOptions>
 {
+    /// <summary>Checks that the configured Inventory API settings are safe and usable.</summary>
+    /// <param name="name">The name of the options instance being validated, if any.</param>
+    /// <param name="options">The options instance to validate.</param>
+    /// <returns>Success when all settings are valid; otherwise, the validation failures.</returns>
     public ValidateOptionsResult Validate(string? name, InventoryApiOptions options)
     {
         var failures = new List<string>();

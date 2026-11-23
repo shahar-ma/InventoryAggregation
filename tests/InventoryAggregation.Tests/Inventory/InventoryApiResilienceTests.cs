@@ -1,9 +1,10 @@
-using System.Net;
 using InventoryAggregation.Api.Infrastructure;
 using InventoryAggregation.Api.Inventory;
 using InventoryAggregation.Tests.Support;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using System.Diagnostics.CodeAnalysis;
+using System.Net;
 
 namespace InventoryAggregation.Tests.Inventory;
 
@@ -173,7 +174,6 @@ public class InventoryApiResilienceTests
                 ["InventoryApi:Resilience:AttemptTimeout"] = "00:00:00.200",
                 ["InventoryApi:Resilience:MaxRetryAttempts"] = "1",
             });
-
         var ex = await Assert.ThrowsAsync<InventoryDataException>(() => harness.Client.GetPageAsync(1, 25, Ct.Token));
 
         Assert.Equal(InventoryDataFailure.Timeout, ex.Failure);

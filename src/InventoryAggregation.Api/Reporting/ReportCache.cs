@@ -16,6 +16,12 @@ public sealed class ReportCache(IOptions<InventoryApiOptions> options, TimeProvi
     private readonly SemaphoreSlim _gate = new(1, 1);
     private volatile Entry? _entry;
 
+    /// <summary>Returns a fresh cached report or builds and caches one report for concurrent callers.</summary>
+    /// <param name="factory">Creates a report when no fresh cached report is available.</param>
+    /// <param name="cancellationToken">Cancels waiting for the cache or building the report.</param>
+    /// <returns>The cached or newly created report.</returns>
+    /// <exception cref="ObjectDisposedException">The current instance has already been disposed.</exception>
+    /// <exception cref="OperationCanceledException"></exception>
     public async Task<InventoryReport> GetOrCreateAsync(
         Func<CancellationToken, Task<InventoryReport>> factory,
         CancellationToken cancellationToken)
@@ -50,6 +56,7 @@ public sealed class ReportCache(IOptions<InventoryApiOptions> options, TimeProvi
         }
     }
 
+    /// <summary>Releases the semaphore used to coordinate report creation.</summary>
     public void Dispose() => _gate.Dispose();
 
     private InventoryReport? GetFresh()

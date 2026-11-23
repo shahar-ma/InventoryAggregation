@@ -19,8 +19,12 @@ public sealed class PagedInventoryRecordSource(
     IOptions<InventoryApiOptions> options,
     ILogger<PagedInventoryRecordSource> logger) : IInventoryRecordSource
 {
-    private sealed record PageExpectation(int PageSize, int TotalPages, int TotalRecords);
+    internal sealed record PageExpectation(int PageSize, int TotalPages, int TotalRecords);
 
+    /// <summary>Fetches every page and returns the de-duplicated dataset.</summary>
+    /// <param name="cancellationToken">Cancels page retrieval.</param>
+    /// <returns>The complete raw dataset and the number of identical duplicates discarded.</returns>
+    /// <exception cref="InventoryDataException">The upstream response is incomplete, inconsistent, or exceeds configured limits.</exception>
     public async Task<RetrievedInventory> GetAllAsync(CancellationToken cancellationToken)
     {
         var settings = options.Value;
@@ -47,12 +51,13 @@ public sealed class PagedInventoryRecordSource(
                 pages[page - 1] = await FetchPageAsync(page, expectation.PageSize, expectation, settings.MaxPageAttempts, token).ConfigureAwait(false);
             }).ConfigureAwait(false);
 
-        var retrieved = Deduplicate(pages.SelectMany(static p => p.Records).ToList());
-        logger.LogInformation(
-            "Retrieved {RecordCount} records from {PageCount} page(s); {Duplicates} duplicate(s) discarded.",
-            retrieved.Records.Count,
-            pages.Length,
-            retrieved.DuplicatesDiscarded);
+        var retrieved = Deduplicate([.. pages.SelectMany(static p => p.Records)]);
+        if (logger.IsEnabled(LogLevel.Information))
+            logger.LogInformation(
+                "Retrieved {RecordCount} records from {PageCount} page(s); {Duplicates} duplicate(s) discarded.",
+                retrieved.Records.Count,
+                pages.Length,
+                retrieved.DuplicatesDiscarded);
         return retrieved;
     }
 
@@ -63,73 +68,21 @@ public sealed class PagedInventoryRecordSource(
         int maxAttempts,
         CancellationToken cancellationToken)
     {
-        for (var attempt = 1; ; attempt++)
+        string lastProblem = "Unknown";
+        for (var attempt = 1; attempt <= maxAttempts; attempt++)
         {
             var result = await client.GetPageAsync(page, requestedPageSize, cancellationToken).ConfigureAwait(false);
-            var problem = Validate(result, page, requestedPageSize, expected);
+            var problem = result.Validate(page, requestedPageSize, expected);
 
             if (problem is null)
-            {
                 return result;
-            }
 
-            if (attempt >= maxAttempts)
-            {
-                throw new InventoryDataException(
-                    InventoryDataFailure.InvalidResponse,
-                    $"Page {page} failed validation after {attempt} attempt(s): {problem}.");
-            }
-
-            logger.LogWarning("Page {Page} failed validation (attempt {Attempt} of {MaxAttempts}): {Problem}", page, attempt, maxAttempts, problem);
+            lastProblem = problem;
+            logger.LogWarning("Page {Page} failed validation (attempt {Attempt} of {MaxAttempts}): {Problem}", page, attempt, maxAttempts, lastProblem);
         }
-    }
-
-    /// <summary>Returns what is wrong with the page, or <see langword="null"/> when it is consistent.</summary>
-    private static string? Validate(InventoryPage p, int page, int requestedPageSize, PageExpectation? expected)
-    {
-        if (p.Page != page)
-        {
-            return $"requested page {page} but the response is for page {p.Page}";
-        }
-
-        if (p.TotalRecords < 0 || p.TotalPages < 0)
-        {
-            return "the response reports a negative total";
-        }
-
-        if (expected is null)
-        {
-            if (p.PageSize < 1 || p.PageSize > requestedPageSize)
-            {
-                return $"the response reports page size {p.PageSize} for a request of {requestedPageSize}";
-            }
-        }
-        else
-        {
-            if (p.PageSize != expected.PageSize)
-            {
-                return $"page size changed from {expected.PageSize} to {p.PageSize}";
-            }
-
-            if (p.TotalPages != expected.TotalPages || p.TotalRecords != expected.TotalRecords)
-            {
-                return "the reported totals changed between pages";
-            }
-        }
-
-        var expectedPages = (int)(((long)p.TotalRecords + p.PageSize - 1) / p.PageSize);
-        if (p.TotalPages != expectedPages)
-        {
-            return $"totalPages {p.TotalPages} does not match totalRecords {p.TotalRecords} at page size {p.PageSize}";
-        }
-
-        var expectedCount = (int)Math.Clamp((long)p.TotalRecords - ((long)(page - 1) * p.PageSize), 0L, p.PageSize);
-        if (p.Records.Count != expectedCount)
-        {
-            return $"expected {expectedCount} records but received {p.Records.Count}";
-        }
-
-        return null;
+        throw new InventoryDataException(
+            InventoryDataFailure.InvalidResponse,
+            $"Page {page} failed validation after {maxAttempts} attempt(s): {lastProblem}.");
     }
 
     /// <summary>

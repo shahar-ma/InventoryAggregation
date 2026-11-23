@@ -10,6 +10,9 @@ public sealed record SanitizationResult(IReadOnlyList<InventoryRecord> Records, 
 /// </summary>
 public static class RecordSanitizer
 {
+    /// <summary>Validates raw records, retaining usable records and reporting excluded ones.</summary>
+    /// <param name="raw">The records returned by the upstream API.</param>
+    /// <returns>The validated records and descriptions of records that were excluded.</returns>
     public static SanitizationResult Sanitize(IEnumerable<RawInventoryRecord?> raw)
     {
         ArgumentNullException.ThrowIfNull(raw);
@@ -39,62 +42,33 @@ public static class RecordSanitizer
 
     private static InventoryRecord? TryConvert(RawInventoryRecord? raw, out string problem)
     {
-        problem = string.Empty;
-
         if (raw is null)
         {
             problem = "the record is null";
             return null;
         }
 
-        if (raw.Id is not { } id)
+        problem = (raw.Id, raw.Name, raw.Category, raw.Price, raw.Quantity, raw.LastUpdated) switch
         {
-            problem = "id is missing";
-            return null;
-        }
+            (null, _, _, _, _, _) => "id is missing",
+            (_, var name, _, _, _, _) when string.IsNullOrWhiteSpace(name) => "name is missing or blank",
+            (_, _, var cat, _, _, _) when string.IsNullOrWhiteSpace(cat) => "category is missing or blank",
+            (_, _, _, null, _, _) => "price is missing",
+            (_, _, _, < 0m, _, _) => "price is negative",
+            (_, _, _, _, null, _) => "quantity is missing",
+            (_, _, _, _, < 0, _) => "quantity is negative",
+            (_, _, _, _, _, null) => "lastUpdated is missing",
+            _ => string.Empty
+        };
 
-        if (string.IsNullOrWhiteSpace(raw.Name))
-        {
-            problem = "name is missing or blank";
-            return null;
-        }
-
-        if (string.IsNullOrWhiteSpace(raw.Category))
-        {
-            problem = "category is missing or blank";
-            return null;
-        }
-
-        if (raw.Price is not { } price)
-        {
-            problem = "price is missing";
-            return null;
-        }
-
-        if (price < 0m)
-        {
-            problem = "price is negative";
-            return null;
-        }
-
-        if (raw.Quantity is not { } quantity)
-        {
-            problem = "quantity is missing";
-            return null;
-        }
-
-        if (quantity < 0)
-        {
-            problem = "quantity is negative";
-            return null;
-        }
-
-        if (raw.LastUpdated is not { } lastUpdated)
-        {
-            problem = "lastUpdated is missing";
-            return null;
-        }
-
-        return new InventoryRecord(id, raw.Name.Trim(), raw.Category.Trim(), price, quantity, lastUpdated.UtcDateTime);
+        return problem.Length > 0
+            ? null
+            : new InventoryRecord(
+                raw.Id!.Value,
+                raw.Name!.Trim(),
+                raw.Category!.Trim(),
+                raw.Price!.Value,
+                raw.Quantity!.Value,
+                raw.LastUpdated!.Value.UtcDateTime);
     }
 }

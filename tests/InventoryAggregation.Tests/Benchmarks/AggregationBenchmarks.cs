@@ -23,17 +23,16 @@ public class AggregationBenchmarks
         var random = new Random(42);
         var epoch = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero);
 
-        _raw = Enumerable.Range(1, RecordCount)
+        _raw = [.. Enumerable.Range(1, RecordCount)
             .Select(i => new RawInventoryRecord(
                 i,
                 $"Item {i}",
                 Categories[random.Next(Categories.Length)],
                 Math.Round((decimal)random.NextDouble() * 500m + 1m, 2),
                 random.Next(0, 50),
-                epoch.AddMinutes(random.Next(0, 500_000))))
-            .ToArray();
+                epoch.AddMinutes(random.Next(0, 500_000))))];
 
-        _valid = RecordSanitizer.Sanitize(_raw).Records.ToArray();
+        _valid = [.. RecordSanitizer.Sanitize(_raw).Records];
     }
 
     [Benchmark]
