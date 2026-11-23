@@ -29,16 +29,14 @@ public sealed class InventoryPageClient(HttpClient httpClient, ILogger<Inventory
 
         try
         {
-            using var response = await httpClient.GetAsync(relativeUri, cancellationToken).ConfigureAwait(false);
+            using var response = await httpClient.GetAsync(relativeUri, cancellationToken);
 
             if (!response.IsSuccessStatusCode)
             {
                 throw FromStatusCode(response.StatusCode, page);
             }
 
-            var dto = await response.Content
-                .ReadFromJsonAsync<InventoryPageDto>(SerializerOptions, cancellationToken)
-                .ConfigureAwait(false);
+            var dto = await response.Content.ReadFromJsonAsync<InventoryPageDto>(SerializerOptions, cancellationToken);
 
             return ToPage(dto);
         }

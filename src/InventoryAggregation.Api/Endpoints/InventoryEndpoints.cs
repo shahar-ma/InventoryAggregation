@@ -29,7 +29,7 @@ public static class InventoryEndpoints
     {
         try
         {
-            var report = await reports.GetReportAsync(cancellationToken).ConfigureAwait(false);
+            var report = await reports.GetReportAsync(cancellationToken);
             return TypedResults.Ok(InventoryReportMapper.ToResponse(report));
         }
         catch (InventoryDataException ex)

@@ -31,7 +31,7 @@ public sealed class ReportCache(IOptions<InventoryApiOptions> options, TimeProvi
             return cached;
         }
 
-        await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        await _gate.WaitAsync(cancellationToken);
         try
         {
             // Another caller may have rebuilt the report while this one waited for the gate.
@@ -40,7 +40,7 @@ public sealed class ReportCache(IOptions<InventoryApiOptions> options, TimeProvi
                 return rebuilt;
             }
 
-            var report = await factory(cancellationToken).ConfigureAwait(false);
+            var report = await factory(cancellationToken);
 
             var ttl = options.Value.CacheDuration;
             if (ttl > TimeSpan.Zero)

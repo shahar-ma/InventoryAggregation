@@ -24,7 +24,7 @@ public sealed class InventoryReportService(
 
     private async Task<InventoryReport> BuildReportAsync(CancellationToken cancellationToken)
     {
-        var retrieved = await source.GetAllAsync(cancellationToken).ConfigureAwait(false);
+        var retrieved = await source.GetAllAsync(cancellationToken);
         var sanitized = RecordSanitizer.Sanitize(retrieved.Records);
         var aggregation = aggregator.Aggregate(sanitized.Records);
 

@@ -29,7 +29,7 @@ public sealed class PagedInventoryRecordSource(
     {
         var settings = options.Value;
 
-        var first = await FetchPageAsync(1, settings.PageSize, expected: null, settings.MaxPageAttempts, cancellationToken).ConfigureAwait(false);
+        var first = await FetchPageAsync(1, settings.PageSize, expected: null, settings.MaxPageAttempts, cancellationToken);
 
         if (first.TotalPages > settings.MaxPages)
         {
@@ -48,8 +48,8 @@ public sealed class PagedInventoryRecordSource(
             new ParallelOptions { MaxDegreeOfParallelism = settings.MaxConcurrentRequests, CancellationToken = cancellationToken },
             async (page, token) =>
             {
-                pages[page - 1] = await FetchPageAsync(page, expectation.PageSize, expectation, settings.MaxPageAttempts, token).ConfigureAwait(false);
-            }).ConfigureAwait(false);
+                pages[page - 1] = await FetchPageAsync(page, expectation.PageSize, expectation, settings.MaxPageAttempts, token);
+            });
 
         var retrieved = Deduplicate([.. pages.SelectMany(static p => p.Records)]);
         if (logger.IsEnabled(LogLevel.Information))
@@ -71,7 +71,7 @@ public sealed class PagedInventoryRecordSource(
         string lastProblem = "Unknown";
         for (var attempt = 1; attempt <= maxAttempts; attempt++)
         {
-            var result = await client.GetPageAsync(page, requestedPageSize, cancellationToken).ConfigureAwait(false);
+            var result = await client.GetPageAsync(page, requestedPageSize, cancellationToken);
             var problem = result.Validate(page, requestedPageSize, expected);
 
             if (problem is null)
