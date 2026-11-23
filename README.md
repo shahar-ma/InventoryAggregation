@@ -21,7 +21,7 @@ into **failing honestly** when that is not possible.
 | `InventoryApi:ApiKeyHeaderName` | `appsettings.json` | Defaults to `X-Api-Key`. **Adjust to whatever header your assignment email specifies.** |
 
 Set the API key (pick one):
-
+#### ![Bash](assets/bash-title.svg)
 ```bash
 # user-secrets (development)
 dotnet user-secrets set "InventoryApi:ApiKey" "<your key>" --project src/InventoryAggregation.Api
@@ -35,7 +35,7 @@ Every other setting (page size, concurrency, retry/timeout/circuit-breaker value
 `Configuration/InventoryApiOptions.cs` and validated at startup, so a bad value fails fast with a clear message.
 
 ## Run
-
+#### ![Bash](assets/bash-title.svg)
 ```bash
 dotnet run --project src/InventoryAggregation.Api
 curl http://localhost:5080/api/inventory/categories
@@ -74,14 +74,14 @@ Failures return RFC 9457 `application/problem+json` with a generic message (deta
 | 500 | Anything unexpected (still a problem document, never a stack trace) |
 
 ## Test
-
+#### ![Bash](assets/bash-title.svg)
 ```bash
 dotnet test                                   # whole solution (xunit.v3 on Microsoft Testing Platform)
 dotnet run --project tests/InventoryAggregation.Tests    # alternative: the test project is itself an executable
 ```
 
 ### Coverage (100% gate)
-
+#### ![Bash](assets/bash-title.svg)
 ```bash
 pwsh ./scripts/coverage.ps1
 ```
@@ -101,11 +101,12 @@ The test project contains BenchmarkDotNet benchmarks (`Benchmarks/`):
 Two always-on tests execute the benchmark methods once and assert correct results, so benchmark code cannot rot. The real
 measurement run is opt-in because it is slow and only meaningful in Release:
 
-#### Bash
+#### ![Bash](assets/bash-title.svg)
+
 ```bash
 INVENTORY_RUN_BENCHMARKS=true dotnet test -c Release --filter-method "*RunBenchmarkSuite"
 ```
-#### PowerShell
+#### ![PowerShell](assets/powershell-title.svg)
 ```PowerShell
 $env:INVENTORY_RUN_BENCHMARKS="true"; dotnet test -c Release --filter-method "*RunBenchmarkSuite"
 ```
