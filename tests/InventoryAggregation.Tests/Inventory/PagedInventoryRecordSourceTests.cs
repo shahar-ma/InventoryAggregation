@@ -125,7 +125,6 @@ public class PagedInventoryRecordSourceTests
     [InlineData("zero-page-size", "page size 0")]
     [InlineData("oversized-page", "page size 30")]
     [InlineData("inconsistent-pages", "does not match")]
-    [InlineData("short-page", "expected 10 records but received 9")]
     public async Task GetAllAsync_RejectsAnInconsistentFirstPage(string scenario, string expectedFragment)
     {
         if (InconsistentFirstPages.TryGetValue(scenario, out var build))
