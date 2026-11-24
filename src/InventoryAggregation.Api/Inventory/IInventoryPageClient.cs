@@ -1,14 +1,23 @@
 using InventoryAggregation.Api.Domain;
-
+using InventoryAggregation.Api.Infrastructure;
 namespace InventoryAggregation.Api.Inventory;
 
-/// <summary>One page of the upstream response with a complete pagination envelope.</summary>
+/// <summary>
+/// One page of the upstream response with a complete pagination envelope.
+/// </summary>
+/// <param name="Page">The current page number.</param>
+/// <param name="PageSize">The maximum number of records per page.</param>
+/// <param name="TotalPages">The total number of available pages.</param>
+/// <param name="TotalRecords">The total number of inventory records across all pages.</param>
+/// <param name="Records">The collection of inventory records for the current page. Individual records may be null.</param>
+/// <param name="PageLogger">The logger used for logging operations related to the current page.</param>
 public sealed record InventoryPage(
     int Page,
     int PageSize,
     int TotalPages,
     int TotalRecords,
-    IReadOnlyList<RawInventoryRecord?> Records)
+    IReadOnlyList<RawInventoryRecord?> Records,
+    ILogger PageLogger)
 {
     /// <summary>Determines whether this response matches the requested page and reports nonnegative totals.</summary>
     /// <param name="page">The page number requested from the upstream API.</param>
@@ -36,14 +45,18 @@ public sealed record InventoryPage(
             return false;
         }
 
-        var expectedCount = (int)Math.Clamp(TotalRecords - ((long)(page - 1) * PageSize), 0L, PageSize);
-        if (Records.Count != expectedCount)
+        if (!IsExpectedCount(page, out int expectedCount))
         {
-            message = $"expected {expectedCount} records but received {Records.Count}";
-            return false;
+            PageLogger.LogUnexpectedPageSize(expectedCount, Records.Count);
         }
 
         return true;
+    }
+
+    internal bool IsExpectedCount(int page, out int expectedCount)
+    {
+        expectedCount =(int)Math.Clamp(TotalRecords - ((long)(page - 1) * PageSize), 0L, PageSize);
+        return Records.Count == expectedCount;
     }
 
     /// <summary>Checks that the response page size is valid for the original request.</summary>

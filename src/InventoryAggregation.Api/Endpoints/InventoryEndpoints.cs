@@ -16,7 +16,9 @@ public static class InventoryEndpoints
     {
         routes.MapGet(CategoriesRoute, GetCategoriesAsync)
             .WithName("GetInventoryCategories")
-            .WithSummary("Inventory aggregated by category (zero-quantity records excluded).")
+            .WithTags("Inventory")
+            .WithSummary("Get inventory aggregated by category")
+            .WithDescription("Returns available inventory grouped by category, with category totals, contributing items, and data-quality statistics. Zero-quantity and invalid records are excluded from category results and reported in the summary. No caller API key is required. A 502 indicates invalid or inconsistent upstream data, a 503 indicates the upstream service is unavailable, and a 504 indicates it did not respond within configured time limits.")
             .Produces<InventoryReportResponse>(StatusCodes.Status200OK)
             .ProducesProblem(StatusCodes.Status502BadGateway)
             .ProducesProblem(StatusCodes.Status503ServiceUnavailable)

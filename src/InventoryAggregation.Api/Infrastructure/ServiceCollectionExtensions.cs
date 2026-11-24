@@ -1,5 +1,3 @@
-using System.Net;
-using System.Net.Http.Headers;
 using InventoryAggregation.Api.Aggregation;
 using InventoryAggregation.Api.Configuration;
 using InventoryAggregation.Api.Inventory;
@@ -8,6 +6,8 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Http.Resilience;
 using Microsoft.Extensions.Options;
 using Polly;
+using System.Net;
+using System.Net.Http.Headers;
 
 namespace InventoryAggregation.Api.Infrastructure;
 
@@ -74,15 +74,6 @@ public static class ServiceCollectionExtensions
         client.MaxResponseContentBufferSize = MaxResponseBytes;
     }
 
-    private static HttpMessageHandler CreatePrimaryHandler() => new SocketsHttpHandler
-    {
-        // Never follow redirects: the API key header must not be forwarded to another host.
-        AllowAutoRedirect = false,
-        // Refresh DNS regularly even though the typed client may be held for a while.
-        PooledConnectionLifetime = TimeSpan.FromMinutes(5),
-        AutomaticDecompression = DecompressionMethods.All,
-    };
-
     private static void ConfigureResilience(HttpStandardResilienceOptions options, InventoryApiResilienceOptions settings)
     {
         options.Retry.MaxRetryAttempts = settings.MaxRetryAttempts;
@@ -98,4 +89,13 @@ public static class ServiceCollectionExtensions
         options.CircuitBreaker.SamplingDuration = settings.BreakerSamplingDuration;
         options.CircuitBreaker.BreakDuration = settings.BreakerBreakDuration;
     }
+
+    private static HttpMessageHandler CreatePrimaryHandler() => new SocketsHttpHandler
+    {
+        // Never follow redirects: the API key header must not be forwarded to another host.
+        AllowAutoRedirect = false,
+        // Refresh DNS regularly even though the typed client may be held for a while.
+        PooledConnectionLifetime = TimeSpan.FromMinutes(5),
+        AutomaticDecompression = DecompressionMethods.All,
+    };
 }

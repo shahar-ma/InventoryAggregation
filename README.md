@@ -73,6 +73,10 @@ Failures return RFC 9457 `application/problem+json` with a generic message (deta
 | 502 | Upstream answered with something unusable (4xx, malformed JSON, inconsistent or incomplete dataset) |
 | 500 | Anything unexpected (still a problem document, never a stack trace) |
 
+## API documentation
+
+When running in the Development environment, Swagger UI is available at `/swagger`, and the OpenAPI document is served at `/swagger/v1/swagger.json`. The document describes `GET /api/inventory/categories`, its success and Problem Details responses, and the response fields. Swagger UI and the document are not served in other environments by default.
+
 ## Test
 #### ![Bash](assets/bash-title.svg)
 ```bash
@@ -177,7 +181,7 @@ re-fetched up to `MaxPageAttempts` times (a short/empty 200 is often transient),
 * The report cache is in-process and single-entry; with several instances each would walk the upstream. A distributed cache
   or conditional requests (ETag) would be next if the dataset were large or changing.
 * The service's own endpoint has no authentication, rate limiting or HTTPS redirection - out of scope here, required before real exposure.
-* No OpenAPI document or health endpoint; no OpenTelemetry beyond what the resilience/HTTP libraries emit by default.
+* No health endpoint; no OpenTelemetry beyond what the resilience/HTTP libraries emit by default.
 * A permanently inconsistent upstream (e.g. persistently overlapping pages) yields a 502, not a best-effort partial answer, by design.
 * A `lastUpdated` without a UTC offset is outside the documented contract; `System.Text.Json` behaviour applies.
 * Coverage is gated at 100% line/branch for the production assembly via `scripts/coverage.ps1`; compiler-generated async state

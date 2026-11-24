@@ -5,13 +5,25 @@
     <!-- Enables `dotnet user-secrets` so the upstream API key never lives in source control. -->
     <UserSecretsId>inventory-aggregation-api-3f6c1c7e-5b1e-4f0e-9a52-0f1d6a3b7c21</UserSecretsId>
   </PropertyGroup>
+	<PropertyGroup>
+		<!-- Enable the latest .NET 10 analyzer rules and set aggressiveness -->
+		<AnalysisLevel>latest-Recommended</AnalysisLevel>
 
+		<!-- Enforce code-style rules (IDExxxx) during dotnet build, not just in the IDE -->
+		<EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+
+		<!-- Turn analyzer warnings into build errors so issues aren't ignored -->
+		<TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+		<GenerateDocumentationFile>true</GenerateDocumentationFile>
+		<NoWarn>$(NoWarn);1591</NoWarn>
+	</PropertyGroup>
 	<ItemGroup>
 		<InternalsVisibleTo Include="InventoryAggregation.Tests" />
 	</ItemGroup>	
 	
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.Http.Resilience" />
+    <PackageReference Include="Swashbuckle.AspNetCore" />
   </ItemGroup>
 
 </Project>

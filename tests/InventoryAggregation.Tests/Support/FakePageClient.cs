@@ -1,5 +1,5 @@
-using System.Collections.Concurrent;
 using InventoryAggregation.Api.Inventory;
+using System.Collections.Concurrent;
 
 namespace InventoryAggregation.Tests.Support;
 

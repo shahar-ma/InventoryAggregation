@@ -1,5 +1,6 @@
 using InventoryAggregation.Api.Configuration;
 using InventoryAggregation.Api.Domain;
+using InventoryAggregation.Api.Infrastructure;
 using Microsoft.Extensions.Options;
 
 namespace InventoryAggregation.Api.Inventory;
@@ -52,37 +53,8 @@ public sealed class PagedInventoryRecordSource(
             });
 
         var retrieved = Deduplicate([.. pages.SelectMany(static p => p.Records)]);
-        if (logger.IsEnabled(LogLevel.Information))
-            logger.LogInformation(
-                "Retrieved {RecordCount} records from {PageCount} page(s); {Duplicates} duplicate(s) discarded.",
-                retrieved.Records.Count,
-                pages.Length,
-                retrieved.DuplicatesDiscarded);
+        logger.LogRetrievedRecords(retrieved.Records.Count, pages.Length, retrieved.DuplicatesDiscarded);
         return retrieved;
-    }
-
-    private async Task<InventoryPage> FetchPageAsync(
-        int page,
-        int requestedPageSize,
-        PageExpectation? expected,
-        int maxAttempts,
-        CancellationToken cancellationToken)
-    {
-        string lastProblem = "Unknown";
-        for (var attempt = 1; attempt <= maxAttempts; attempt++)
-        {
-            var result = await client.GetPageAsync(page, requestedPageSize, cancellationToken);
-            var problem = result.Validate(page, requestedPageSize, expected);
-
-            if (problem is null)
-                return result;
-
-            lastProblem = problem;
-            logger.LogWarning("Page {Page} failed validation (attempt {Attempt} of {MaxAttempts}): {Problem}", page, attempt, maxAttempts, lastProblem);
-        }
-        throw new InventoryDataException(
-            InventoryDataFailure.InvalidResponse,
-            $"Page {page} failed validation after {maxAttempts} attempt(s): {lastProblem}.");
     }
 
     /// <summary>
@@ -123,5 +95,29 @@ public sealed class PagedInventoryRecordSource(
         }
 
         return new RetrievedInventory(unique, duplicates);
+    }
+
+    private async Task<InventoryPage> FetchPageAsync(
+            int page,
+        int requestedPageSize,
+        PageExpectation? expected,
+        int maxAttempts,
+        CancellationToken cancellationToken)
+    {
+        string lastProblem = "Unknown";
+        for (var attempt = 1; attempt <= maxAttempts; attempt++)
+        {
+            var result = await client.GetPageAsync(page, requestedPageSize, cancellationToken);
+            var problem = result.Validate(page, requestedPageSize, expected);
+
+            if (problem is null)
+                return result;
+
+            lastProblem = problem;
+            logger.LogPageFailedValidation(page, attempt, maxAttempts, lastProblem);
+        }
+        throw new InventoryDataException(
+            InventoryDataFailure.InvalidResponse,
+            $"Page {page} failed validation after {maxAttempts} attempt(s): {lastProblem}.");
     }
 }

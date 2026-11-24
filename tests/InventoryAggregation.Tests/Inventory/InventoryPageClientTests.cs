@@ -1,10 +1,10 @@
-using System.Net;
-using System.Text;
 using InventoryAggregation.Api.Inventory;
 using InventoryAggregation.Tests.Support;
 using Microsoft.Extensions.Logging.Abstractions;
 using Polly.CircuitBreaker;
 using Polly.Timeout;
+using System.Net;
+using System.Text;
 
 namespace InventoryAggregation.Tests.Inventory;
 

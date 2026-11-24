@@ -1,6 +1,7 @@
-using System.Text.Json;
 using InventoryAggregation.Api.Domain;
 using InventoryAggregation.Api.Inventory;
+using Microsoft.Extensions.Logging.Abstractions;
+using System.Text.Json;
 
 namespace InventoryAggregation.Tests.Support;
 
@@ -30,7 +31,7 @@ internal static class TestData
         new(id, name ?? $"Item {id}", category, price, quantity, updatedUtc ?? T0.UtcDateTime);
 
     public static InventoryPage Page(int page, int pageSize, int totalPages, int totalRecords, params RawInventoryRecord?[] records) =>
-        new(page, pageSize, totalPages, totalRecords, records);
+        new(page, pageSize, totalPages, totalRecords, records, NullLogger<InventoryPage>.Instance);
 
     /// <summary>A fully consistent view of a dataset of <paramref name="total"/> records (ids 1..total) at the given page.</summary>
     public static InventoryPage DatasetPage(int total, int pageSize, int page)

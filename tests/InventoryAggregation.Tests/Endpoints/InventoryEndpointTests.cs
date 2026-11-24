@@ -1,16 +1,26 @@
-using System.Diagnostics.CodeAnalysis;
-using System.Net;
-using System.Net.Http.Json;
-using System.Text.Json;
 using InventoryAggregation.Api.Domain;
 using InventoryAggregation.Api.Endpoints;
 using InventoryAggregation.Api.Inventory;
 using InventoryAggregation.Tests.Support;
+using Microsoft.AspNetCore.Hosting;
+using System.Diagnostics.CodeAnalysis;
+using System.Net;
+using System.Net.Http.Json;
+using System.Text.Json;
 
 namespace InventoryAggregation.Tests.Endpoints;
 
 public class InventoryEndpointTests(ApiFactory factory) : IClassFixture<ApiFactory>
 {
+    private sealed class ProductionApiFactory : ApiFactory
+    {
+        protected override void ConfigureWebHost(IWebHostBuilder builder)
+        {
+            builder.UseEnvironment("Production");
+            base.ConfigureWebHost(builder);
+        }
+    }
+
     private sealed class NoApiKeyFactory : ApiFactory
     {
         protected override string ApiKey => "";
@@ -18,6 +28,57 @@ public class InventoryEndpointTests(ApiFactory factory) : IClassFixture<ApiFacto
 
     private static readonly RawInventoryRecord Printer =
         new(1001, "Thermal Receipt Printer", "Electronics", 149.99m, 12, new DateTimeOffset(2026, 10, 15, 12, 30, 0, TimeSpan.Zero));
+
+    [Fact]
+    public async Task SwaggerDocument_DescribesInventoryOperationResponsesAndSchema()
+    {
+        using var client = factory.CreateClient();
+
+        using var response = await client.GetAsync("/swagger/v1/swagger.json", Ct.Token);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync(Ct.Token));
+        var operation = document.RootElement
+            .GetProperty("paths")
+            .GetProperty(InventoryEndpoints.CategoriesRoute)
+            .GetProperty("get");
+
+        Assert.Equal("Get inventory aggregated by category", operation.GetProperty("summary").GetString());
+        Assert.Contains("No caller API key is required", operation.GetProperty("description").GetString());
+        var responses = operation.GetProperty("responses");
+        Assert.True(responses.TryGetProperty("200", out _));
+        Assert.True(responses.TryGetProperty("502", out _));
+        Assert.True(responses.TryGetProperty("503", out _));
+        Assert.True(responses.TryGetProperty("504", out _));
+
+        var schemas = document.RootElement.GetProperty("components").GetProperty("schemas");
+        Assert.Contains("Available inventory", schemas.GetProperty("CategoryResponse").GetProperty("description").GetString());
+        Assert.Contains("unit price", schemas.GetProperty("ItemResponse").GetProperty("properties").GetProperty("price").GetProperty("description").GetString());
+    }
+
+    [Fact]
+    public async Task SwaggerUi_IsServedInDevelopment()
+    {
+        using var client = factory.CreateClient();
+
+        using var response = await client.GetAsync("/swagger/index.html", Ct.Token);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains("Swagger UI", await response.Content.ReadAsStringAsync(Ct.Token));
+    }
+
+    [Fact]
+    public async Task SwaggerEndpoints_AreNotServedOutsideDevelopment()
+    {
+        using var production = new ProductionApiFactory();
+        using var client = production.CreateClient();
+
+        using var documentResponse = await client.GetAsync("/swagger/v1/swagger.json", Ct.Token);
+        using var uiResponse = await client.GetAsync("/swagger/index.html", Ct.Token);
+
+        Assert.Equal(HttpStatusCode.NotFound, documentResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, uiResponse.StatusCode);
+    }
 
     [Fact]
     public async Task Get_ReturnsTheAggregatedCategories_InTheDocumentedShape()
