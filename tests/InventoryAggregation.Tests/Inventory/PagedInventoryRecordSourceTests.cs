@@ -163,18 +163,24 @@ public class PagedInventoryRecordSourceTests
     [Fact]
     public async Task GetAllAsync_RetriesAPageWhoseContentIsShort_ThenSucceeds()
     {
+        int capturedAttempt = 0;
         var client = new FakePageClient((page, size, attempt) =>
         {
+            capturedAttempt = attempt;
             var good = TestData.DatasetPage(60, size, page);
             return page == 2 && attempt == 1
                 ? TestData.Page(2, good.PageSize, good.TotalPages, good.TotalRecords, [.. good.Records.Take(good.Records.Count - 1)])
                 : good;
         });
 
-        var result = await Create(client).GetAllAsync(Ct.Token);
+        PagedInventoryRecordSource inventoryClient = Create(client);
 
-        Assert.Equal(59, result.Records.Count);
-        Assert.Equal(1, client.Calls.Count(c => c.Page == 1));
+        _ = await inventoryClient.GetAllAsync(Ct.Token);
+        var result = await inventoryClient.GetAllAsync(Ct.Token);
+
+        Assert.Equal(60, result.Records.Count);
+        Assert.Equal(2, client.Calls.Count(c => c.Page == 1));
+        Assert.Equal(2, capturedAttempt);
 
         client = new FakePageClient((page, size, _) =>
         {
