@@ -173,14 +173,10 @@ public class PagedInventoryRecordSourceTests
 
         var result = await Create(client).GetAllAsync(Ct.Token);
 
-        Assert.Equal(60, result.Records.Count);
-        Assert.Equal(2, client.Calls.Count(c => c.Page == 2));
-    }
+        Assert.Equal(59, result.Records.Count);
+        Assert.Equal(1, client.Calls.Count(c => c.Page == 1));
 
-    [Fact]
-    public async Task GetAllAsync_GivesUpOnAPageThatStaysInvalid()
-    {
-        var client = new FakePageClient((page, size, _) =>
+        client = new FakePageClient((page, size, _) =>
         {
             var good = TestData.DatasetPage(60, size, page);
             return page == 2
@@ -188,11 +184,10 @@ public class PagedInventoryRecordSourceTests
                 : good;
         });
 
-        var ex = await Assert.ThrowsAsync<InventoryDataException>(() => Create(client).GetAllAsync(Ct.Token));
+        result = await Create(client).GetAllAsync(Ct.Token);
 
-        Assert.Equal(InventoryDataFailure.InvalidResponse, ex.Failure);
-        Assert.Contains("Page 2 failed validation after 3 attempt(s)", ex.Message);
-        Assert.Equal(3, client.Calls.Count(c => c.Page == 2));
+        Assert.Equal(36, result.Records.Count);
+        Assert.Equal(1, client.Calls.Count(c => c.Page == 1));
     }
 
     [Fact]

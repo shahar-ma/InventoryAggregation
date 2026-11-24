@@ -54,7 +54,7 @@ public static class ServiceCollectionExtensions
             .AddHttpClient<IInventoryPageClient, InventoryPageClient>(ConfigureClient)
             .ConfigurePrimaryHttpMessageHandler(CreatePrimaryHandler);
 
-        builder.AddStandardResilienceHandler(options => ConfigureResilience(options, resilience));
+        builder.AddStandardResilienceHandler(options => options.ConfigureResilience(resilience));
 
         return builder;
     }
@@ -74,16 +74,14 @@ public static class ServiceCollectionExtensions
         client.MaxResponseContentBufferSize = MaxResponseBytes;
     }
 
-    private static void ConfigureResilience(HttpStandardResilienceOptions options, InventoryApiResilienceOptions settings)
+    private static void ConfigureResilience(this HttpStandardResilienceOptions options, InventoryApiResilienceOptions settings)
     {
         options.Retry.MaxRetryAttempts = settings.MaxRetryAttempts;
         options.Retry.Delay = settings.RetryDelay;
         options.Retry.BackoffType = DelayBackoffType.Exponential;
         options.Retry.UseJitter = settings.UseJitter;
-
         options.AttemptTimeout.Timeout = settings.AttemptTimeout;
         options.TotalRequestTimeout.Timeout = settings.TotalTimeout;
-
         options.CircuitBreaker.FailureRatio = settings.BreakerFailureRatio;
         options.CircuitBreaker.MinimumThroughput = settings.BreakerMinimumThroughput;
         options.CircuitBreaker.SamplingDuration = settings.BreakerSamplingDuration;
